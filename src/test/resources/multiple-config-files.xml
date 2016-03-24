@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<org.jenkinsci.plugins.configfiles.multiple.MultipleConfigProvider>
+    <ID__PREFIX>MultipleConfigProvider.</ID__PREFIX>
+    <configs>
+        <entry>
+            <string>MultipleConfigProvider.1331575793175</string>
+            <org.jenkinsci.lib.configprovider.model.Config>
+                <id>MultipleConfigProvider.1331575793175</id>
+                <name>MyMultiple1</name>
+                <comment>my multiple</comment>
+                <content>some text</content>
+            </org.jenkinsci.lib.configprovider.model.Config>
+        </entry>
+    </configs>
+</org.jenkinsci.plugins.configfiles.multiple.MultipleConfigProvider>
