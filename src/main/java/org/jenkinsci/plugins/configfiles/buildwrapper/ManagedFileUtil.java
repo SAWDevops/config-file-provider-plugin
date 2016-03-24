@@ -23,19 +23,14 @@
  */
 package org.jenkinsci.plugins.configfiles.buildwrapper;
 
+import com.cloudbees.plugins.credentials.common.StandardUsernameCredentials;
 import hudson.AbortException;
 import hudson.FilePath;
 import hudson.model.AbstractBuild;
+import hudson.model.Run;
+import hudson.model.TaskListener;
 import hudson.remoting.VirtualChannel;
-
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import jenkins.security.MasterToSlaveCallable;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.lib.configprovider.ConfigProvider;
 import org.jenkinsci.lib.configprovider.model.Config;
@@ -44,10 +39,12 @@ import org.jenkinsci.plugins.configfiles.maven.security.HasServerCredentialMappi
 import org.jenkinsci.plugins.tokenmacro.MacroEvaluationException;
 import org.jenkinsci.plugins.tokenmacro.TokenMacro;
 
-import com.cloudbees.plugins.credentials.common.StandardUsernameCredentials;
-import hudson.model.Run;
-import hudson.model.TaskListener;
-import jenkins.security.MasterToSlaveCallable;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class ManagedFileUtil {
 
@@ -67,19 +64,16 @@ public class ManagedFileUtil {
 
     /**
      * provisions (publishes) the given files to the workspace.
-     * 
-     * @param managedFiles
-     *            the files to be provisioned
-     * @param workspace
-     *            target workspace
-     * @param listener
-     *            the listener
+     *
+     * @param managedFiles the files to be provisioned
+     * @param workspace    target workspace
+     * @param listener     the listener
      * @return a map of all the files copied, mapped to the path of the remote location, never <code>null</code>.
      * @throws IOException
      * @throws InterruptedException
-     * @throws AbortException config file has not been found
+     * @throws AbortException       config file has not been found
      */
-    public static Map<ManagedFile, FilePath> provisionConfigFiles(List<ManagedFile> managedFiles, Run<?,?> build, FilePath workspace, TaskListener listener) throws IOException, InterruptedException {
+    public static Map<ManagedFile, FilePath> provisionConfigFiles(List<ManagedFile> managedFiles, Run<?, ?> build, FilePath workspace, TaskListener listener) throws IOException, InterruptedException {
 
         final Map<ManagedFile, FilePath> file2Path = new HashMap<ManagedFile, FilePath>();
         listener.getLogger().println("provisoning config files...");
@@ -97,7 +91,7 @@ public class ManagedFileUtil {
             if (createTempFile) {
                 target = ManagedFileUtil.createTempFile(workspace.getChannel());
             } else {
-                
+
                 String expandedTargetLocation = managedFile.targetLocation;
                 try {
                     expandedTargetLocation = build instanceof AbstractBuild ? TokenMacro.expandAll((AbstractBuild<?, ?>) build, listener, managedFile.targetLocation) : managedFile.targetLocation;
@@ -105,18 +99,18 @@ public class ManagedFileUtil {
                     listener.getLogger().println("[ERROR] failed to expand variables in target location '" + managedFile.targetLocation + "' : " + e.getMessage());
                     expandedTargetLocation = managedFile.targetLocation;
                 }
-                
+
                 // Should treat given path as the actual filename unless it has a trailing slash (implying a
                 // directory) or path already exists in workspace as a directory.
                 target = new FilePath(workspace, expandedTargetLocation);
                 String immediateFileName = expandedTargetLocation.substring(
-                		expandedTargetLocation.lastIndexOf("/")+1);
+                        expandedTargetLocation.lastIndexOf("/") + 1);
 
-                if (immediateFileName.length() == 0 || (target.exists() && target.isDirectory())){
-                	target = new FilePath(target,configFile.name.replace(" ", "_"));
+                if (immediateFileName.length() == 0 || (target.exists() && target.isDirectory())) {
+                    target = new FilePath(target, configFile.name.replace(" ", "_"));
                 }
             }
-            
+
             // Inserts Maven server credentials if config files are Maven settings
             String fileContent = insertCredentialsInSettings(build, configFile);
 
@@ -131,23 +125,34 @@ public class ManagedFileUtil {
         return file2Path;
     }
 
-    private static String insertCredentialsInSettings(Run<?,?> build, Config configFile) throws IOException {
-		String fileContent = configFile.content;
-		
-		if (configFile instanceof HasServerCredentialMappings) {
-			HasServerCredentialMappings settings = (HasServerCredentialMappings) configFile;
-			final Map<String, StandardUsernameCredentials> resolvedCredentials = CredentialsHelper.resolveCredentials(build.getParent(), settings.getServerCredentialMappings());
-			final Boolean isReplaceAll = settings.getIsReplaceAll();
+    private static String insertCredentialsInSettings(Run<?, ?> build, Config configFile) throws IOException {
+        String fileContent = configFile.content;
 
-			if (!resolvedCredentials.isEmpty()) {
-				try {
-					fileContent = CredentialsHelper.fillAuthentication(fileContent, isReplaceAll, resolvedCredentials);
-				} catch (Exception exception) {
-					throw new IOException("[ERROR] could not insert credentials into the settings file", exception);
-				}
-			}
-		}
-		
-		return fileContent;
-	}
+        if (configFile instanceof HasServerCredentialMappings) {
+            HasServerCredentialMappings settings = (HasServerCredentialMappings) configFile;
+            final Map<String, StandardUsernameCredentials> resolvedCredentials = CredentialsHelper.resolveCredentials(build.getParent(), settings.getServerCredentialMappings());
+            final Boolean isReplaceAll = settings.getIsReplaceAll();
+
+            if (!resolvedCredentials.isEmpty()) {
+                try {
+                    fileContent = CredentialsHelper.fillAuthentication(fileContent, isReplaceAll, resolvedCredentials);
+                } catch (Exception exception) {
+                    throw new IOException("[ERROR] could not insert credentials into the settings file", exception);
+                }
+            }
+        }
+
+        return fileContent;
+    }
+
+    private static ConfigProvider getProviderForConfigId(String id) {
+        if (!StringUtils.isBlank(id)) {
+            for (ConfigProvider provider : ConfigProvider.all()) {
+                if (provider.isResponsibleFor(id)) {
+                    return provider;
+                }
+            }
+        }
+        return null;
+    }
 }

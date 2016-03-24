@@ -1,5 +1,6 @@
 package org.jenkinsci.plugins.configfiles.buildwrapper;
 
+import com.gargoylesoftware.htmlunit.html.*;
 import hudson.Launcher;
 import hudson.maven.MavenModuleSet;
 import hudson.model.BuildListener;
@@ -29,11 +30,6 @@ import org.junit.Test;
 import org.jvnet.hudson.test.ExtractResourceSCM;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.JenkinsRule.WebClient;
-
-import com.gargoylesoftware.htmlunit.html.DomNodeList;
-import com.gargoylesoftware.htmlunit.html.HtmlElement;
-import com.gargoylesoftware.htmlunit.html.HtmlOption;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
 public class ConfigFileBuildWrapperTest {
 
@@ -114,18 +110,20 @@ public class ConfigFileBuildWrapperTest {
         final WebClient client = j.createWebClient();
         final HtmlPage page = client.goTo("job/someJob/configure");
 
-        final DomNodeList<HtmlElement> option = page.getElementsByTagName("option");
+        final DomNodeList<DomElement> option = page.getElementsByTagName("option");
         boolean foundActive = false;
         boolean foundSecond = false;
-        for (HtmlElement htmlElement : option) {
-            final HtmlOption htmlOption = (HtmlOption) htmlElement;
-            if (htmlOption.getValueAttribute().equals(activeConfig.id)) {
-                Assert.assertTrue("correct config is not selected", htmlOption.isSelected());
-                foundActive = true;
-            }
-            if (htmlOption.getValueAttribute().equals(secondConfig.id)) {
-                Assert.assertFalse("wrong config is selected", htmlOption.isSelected());
-                foundSecond = true;
+        for (DomElement htmlElement : option) {
+            if(htmlElement instanceof HtmlElement) {
+                final HtmlOption htmlOption = (HtmlOption) htmlElement;
+                if (htmlOption.getValueAttribute().equals(activeConfig.id)) {
+                    Assert.assertTrue("correct config is not selected", htmlOption.isSelected());
+                    foundActive = true;
+                }
+                if (htmlOption.getValueAttribute().equals(secondConfig.id)) {
+                    Assert.assertFalse("wrong config is selected", htmlOption.isSelected());
+                    foundSecond = true;
+                }
             }
         }
         Assert.assertTrue("configured active setting was not available as option", foundActive);
