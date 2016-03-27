@@ -1,22 +1,14 @@
 package org.jenkinsci.plugins.configfiles.buildwrapper;
 
-import com.gargoylesoftware.htmlunit.html.*;
+import com.gargoylesoftware.htmlunit.html.DomNodeList;
+import com.gargoylesoftware.htmlunit.html.HtmlElement;
+import com.gargoylesoftware.htmlunit.html.HtmlOption;
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import hudson.Launcher;
 import hudson.maven.MavenModuleSet;
-import hudson.model.BuildListener;
-import hudson.model.Result;
-import hudson.model.AbstractBuild;
+import hudson.model.*;
 import hudson.model.Cause.UserCause;
-import hudson.model.FreeStyleProject;
-import hudson.model.ParametersDefinitionProperty;
-import hudson.model.StringParameterDefinition;
 import hudson.tasks.Builder;
-
-import java.io.IOException;
-import java.util.Collections;
-
-import javax.inject.Inject;
-
 import org.jenkinsci.lib.configprovider.ConfigProvider;
 import org.jenkinsci.lib.configprovider.model.Config;
 import org.jenkinsci.plugins.configfiles.ConfigFilesManagement;
@@ -31,19 +23,23 @@ import org.jvnet.hudson.test.ExtractResourceSCM;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.JenkinsRule.WebClient;
 
+import javax.inject.Inject;
+import java.io.IOException;
+import java.util.Collections;
+
 public class ConfigFileBuildWrapperTest {
 
     @Rule
-    public JenkinsRule          j = new JenkinsRule();
+    public JenkinsRule j = new JenkinsRule();
 
     @Inject
-    ConfigFilesManagement       configManagement;
+    ConfigFilesManagement configManagement;
 
     @Inject
     MavenSettingsConfigProvider mavenSettingProvider;
 
     @Inject
-    XmlConfigProvider           xmlProvider;
+    XmlConfigProvider xmlProvider;
 
     @Test
     public void envVariableMustBeAvailableInMavenModuleSetBuild() throws Exception {
@@ -110,20 +106,18 @@ public class ConfigFileBuildWrapperTest {
         final WebClient client = j.createWebClient();
         final HtmlPage page = client.goTo("job/someJob/configure");
 
-        final DomNodeList<DomElement> option = page.getElementsByTagName("option");
+        final DomNodeList<HtmlElement> option = page.getElementsByTagName("option");
         boolean foundActive = false;
         boolean foundSecond = false;
-        for (DomElement htmlElement : option) {
-            if(htmlElement instanceof HtmlElement) {
-                final HtmlOption htmlOption = (HtmlOption) htmlElement;
-                if (htmlOption.getValueAttribute().equals(activeConfig.id)) {
-                    Assert.assertTrue("correct config is not selected", htmlOption.isSelected());
-                    foundActive = true;
-                }
-                if (htmlOption.getValueAttribute().equals(secondConfig.id)) {
-                    Assert.assertFalse("wrong config is selected", htmlOption.isSelected());
-                    foundSecond = true;
-                }
+        for (HtmlElement htmlElement : option) {
+            final HtmlOption htmlOption = (HtmlOption) htmlElement;
+            if (htmlOption.getValueAttribute().equals(activeConfig.id)) {
+                Assert.assertTrue("correct config is not selected", htmlOption.isSelected());
+                foundActive = true;
+            }
+            if (htmlOption.getValueAttribute().equals(secondConfig.id)) {
+                Assert.assertFalse("wrong config is selected", htmlOption.isSelected());
+                foundSecond = true;
             }
         }
         Assert.assertTrue("configured active setting was not available as option", foundActive);
